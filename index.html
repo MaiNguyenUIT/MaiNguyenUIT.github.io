@@ -18,6 +18,7 @@
             justify-content: center;
             height: 100vh;
             font-family: Arial, sans-serif;
+            position: relative; /* Needed to position the swap button */
         }
         .header {
             font-size: 2.5rem;
@@ -48,7 +49,7 @@
             cursor: pointer;
         }
         .text {
-        font-size: 30px;
+            font-size: 30px;
         }
         #logo {
             position: absolute;
@@ -57,109 +58,123 @@
             z-index: -1;
             width: 400px;
         }
+        /* Swap button style */
+        #swap {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #fff;
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
 
         @media (max-width: 450px) {
-    .header {
-        font-size: 30px;
-        padding-top: 40px;
-    }
-}
+            .header {
+                font-size: 30px;
+                padding-top: 40px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 id="header" class = "header">{AI} NHẬN BIẾT RÁC</h1>
-    <button id="start" onclick="init()">Start</button>
-    <button id="swap" style="display:none;" onclick="swapCamera()">Swap Camera</button>
-    <video id="video" autoplay></video>
-    <div id="webcam-container"></div>
-    <div id = "label-container" class="text"></div>
+        <h1 id="header" class="header">{AI} NHẬN BIẾT RÁC</h1>
+        <button id="start" onclick="init()">Start</button>
+        <button id="swap" style="display: none;" onclick="swapCamera()">Swap Camera</button> <!-- Swap button -->
+        <video id="video" autoplay></video>
+        <div id="webcam-container"></div>
+        <div id="label-container" class="text"></div>
     </div>
     <audio style="position: absolute; top: 0;" controls autoplay>
         <source src="Resources/y2meta.net_320kbps-mau-xanh-noo-phuoc-thinh-and-team-the-voice-kids-official-mv.mp3" type="audio/ogg">
-      Your browser does not support the audio element.
-      </audio>
+        Your browser does not support the audio element.
+    </audio>
     <img id="logo" src="Resources/z6090309494458_3f5b7aa394bd0284b063d406aa232639.jpg">
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script type="text/javascript">
-        // More API functions here:
-        // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
-    
-        // Thay đổi đường link dưới đây
         const URL = "https://teachablemachine.withgoogle.com/models/Ono56loZ1/";
 
         const startButton = document.getElementById('start');
         const swapButton = document.getElementById('swap');
         const video = document.getElementById('video');
-        const header = document.getElementById('header'); // Add this line
-        const logo = document.getElementById('logo')
+        const header = document.getElementById('header');
+        const logo = document.getElementById('logo');
+        const webcamContainer = document.getElementById('webcam-container');
+        const labelContainer = document.getElementById('label-container');
 
         let webcam;
         let currentStream;
         let isFrontCamera = true;
 
+        // Handle 'Start' button click
         startButton.addEventListener('click', async () => {
-            startButton.style.display = 'none'; // Hide the start button
-            header.style.display = 'none'; // Hide the header
+            startButton.style.display = 'none';
+            header.style.display = 'none';
             logo.style.display = 'none';
             swapButton.style.display = 'block'; // Show the swap button
+            await init(); // Initialize webcam and model
         });
 
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
     
-            // load the model and metadata
+            // Load the model and metadata
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
     
-            // Setup webcam initially with front camera
+            // Set up the webcam with the current camera
             await setupWebcam();
             window.requestAnimationFrame(loop);
-    
-            // append elements to the DOM
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            labelContainer = document.getElementById("label-container");
         }
 
         async function setupWebcam() {
-            const flip = true; // whether to flip the webcam
+            const flip = true;
             const constraints = {
                 video: {
                     facingMode: isFrontCamera ? 'user' : 'environment'
                 }
             };
+
+            if (currentStream) {
+                // Stop the previous stream
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            // Start the new camera stream
             currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-            webcam = new tmImage.Webcam(700, 700, flip);
-            webcam.attachToCanvas(webcam.canvas);
-            await webcam.setup();
+
+            webcam = new tmImage.Webcam(700, 700, flip); // width, height, flip
+            await webcam.setup(); // request access to the webcam
             await webcam.play();
+            window.requestAnimationFrame(loop);
+    
+            // append elements to the DOM
+            document.getElementById("webcam-container").appendChild(webcam.canvas); // Attach webcam to container
             document.getElementById("video").srcObject = currentStream;
         }
 
         async function loop() {
-            webcam.update(); // update the webcam frame
+            webcam.update(); // Update the webcam frame
             await predict();
             window.requestAnimationFrame(loop);
         }
-    
-        // run the webcam image through the image model
+
         async function predict() {
-            // predict can take in an image, video or canvas html element
             const predictions = await model.predictTopK(webcam.canvas, 1);
             labelContainer.innerText = predictions[0].className;
         }
 
-        // Function to swap the camera
+        // Swap camera functionality
         async function swapCamera() {
-            isFrontCamera = !isFrontCamera; // Toggle the camera mode
-            currentStream.getTracks().forEach(track => track.stop()); // Stop the current stream
-            await setupWebcam(); // Re-setup with the new camera
+            isFrontCamera = !isFrontCamera; // Toggle the camera
+            await setupWebcam(); // Re-setup webcam with the new camera
         }
     </script>
 </body>
 </html>
-
-
