@@ -110,6 +110,7 @@
         let webcam;
         let currentStream;
         let isFrontCamera = true;
+        let mediaStream;
 
         // Handle 'Start' button click
         startButton.addEventListener('click', async () => {
@@ -141,22 +142,26 @@
                 }
             };
 
-            if (currentStream) {
+            if (mediaStream) {
                 // Stop the previous stream
-                currentStream.getTracks().forEach(track => track.stop());
+                mediaStream.getTracks().forEach(track => track.stop());
             }
 
+            if (webcam) {
+        webcamContainer.removeChild(webcam.canvas);
+    }
+    
             // Start the new camera stream
-            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+            mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = mediaStream;
 
             webcam = new tmImage.Webcam(700, 700, flip); // width, height, flip
             await webcam.setup(); // request access to the webcam
             await webcam.play();
             window.requestAnimationFrame(loop);
     
-            // append elements to the DOM
-            document.getElementById("webcam-container").appendChild(webcam.canvas); // Attach webcam to container
-            document.getElementById("video").srcObject = currentStream;
+            // Append webcam canvas to the container
+            webcamContainer.appendChild(webcam.canvas);
         }
 
         async function loop() {
@@ -178,3 +183,4 @@
     </script>
 </body>
 </html>
+
